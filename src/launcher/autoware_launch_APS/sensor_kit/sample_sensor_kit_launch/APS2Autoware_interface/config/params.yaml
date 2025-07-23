@@ -1,0 +1,41 @@
+motor2auto:
+  ros__parameters:
+    wheel_distance: 0.394  #m
+    wheel_diameter: 0.266 #m
+    serial_port: "/dev/ttyUSB0"
+    baud_rate: 115200
+    accel_up_time: 0    # ms
+    accel_down_time: 0    # ms
+    max_linear_speed: 1.6    # m/s
+    max_motor_speed: 90    # rpm 0-180rpm  1.6m/s --> 114.8rpm
+    max_angular_speed: 0.65   # rad/s 
+    
+    linear_acceleration_max: 0.6 # m/s²
+    angular_acceleration_max: 0.8 # rad/s²
+    
+    # speed up params
+    up_l: 2.0
+    up_h: 21.0
+    up_s: 0.06
+    up_c: 50.0
+
+    # speed down params
+    down_l: 0.0
+    down_h: 30.0
+    down_s: -0.03
+    down_c: 50.0
+
+    linear_axis_: 1
+    angular_axis_: 3
+    deadzone_: 0.1
+    mode_switch_button_: 0
+    motor_lock_button_: 1
+    enable_button_: 5
+    speed_toggle_button_: 2
+    
+    low_linear_scale_: 0.35 
+    low_angular_scale_: 0.6 
+    medium_linear_scale_: 0.65
+    medium_angular_scale_: 0.6
+    high_linear_scale_: 1.2
+    high_angular_scale_: 1.6
