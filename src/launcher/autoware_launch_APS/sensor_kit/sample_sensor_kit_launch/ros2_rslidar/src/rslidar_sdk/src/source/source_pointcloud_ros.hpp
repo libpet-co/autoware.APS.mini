@@ -49,7 +49,7 @@ inline sensor_msgs::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, const
 
   int fields = 4;
 #ifdef POINT_TYPE_XYZIRT
-  fields = 6;
+  fields = 10;
 #endif
   ros_msg.fields.clear();
   ros_msg.fields.reserve(fields);
@@ -71,8 +71,12 @@ inline sensor_msgs::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, const
   offset = addPointField(ros_msg, "z", 1, sensor_msgs::PointField::FLOAT32, offset);
   offset = addPointField(ros_msg, "intensity", 1, sensor_msgs::PointField::FLOAT32, offset);
 #ifdef POINT_TYPE_XYZIRT
-  offset = addPointField(ros_msg, "ring", 1, sensor_msgs::PointField::UINT16, offset);
-  offset = addPointField(ros_msg, "timestamp", 1, sensor_msgs::PointField::FLOAT64, offset);
+  offset = addPointField(ros_msg, "return_type", 1, sensor_msgs::PointField::UINT8, offset);
+  offset = addPointField(ros_msg, "channel", 1, sensor_msgs::PointField::UINT16, offset);
+  offset = addPointField(ros_msg, "azimuth", 1, sensor_msgs::PointField::FLOAT32, offset);
+  offset = addPointField(ros_msg, "elevation", 1, sensor_msgs::PointField::FLOAT32, offset);
+  offset = addPointField(ros_msg, "distance", 1, sensor_msgs::PointField::FLOAT32, offset);
+  offset = addPointField(ros_msg, "time", 1, sensor_msgs::PointField::UINT32, offset);
 #endif
 
 #if 0
@@ -203,6 +207,7 @@ inline void DestinationPointCloudRos::sendPointCloud(const LidarPointCloudMsg& m
 #ifdef ROS2_FOUND
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <cmath>
 #include <sstream>
 
 namespace robosense
@@ -216,7 +221,7 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
 
   int fields = 4;
 #ifdef POINT_TYPE_XYZIRT
-  fields = 6;
+  fields = 10;
 #endif
   ros_msg.fields.clear();
   ros_msg.fields.reserve(fields);
@@ -236,10 +241,14 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
   offset = addPointField(ros_msg, "x", 1, sensor_msgs::msg::PointField::FLOAT32, offset);
   offset = addPointField(ros_msg, "y", 1, sensor_msgs::msg::PointField::FLOAT32, offset);
   offset = addPointField(ros_msg, "z", 1, sensor_msgs::msg::PointField::FLOAT32, offset);
-  offset = addPointField(ros_msg, "intensity", 1, sensor_msgs::msg::PointField::FLOAT32, offset);
+  offset = addPointField(ros_msg, "intensity", 1, sensor_msgs::msg::PointField::UINT8, offset);
 #ifdef POINT_TYPE_XYZIRT
-  offset = addPointField(ros_msg, "ring", 1, sensor_msgs::msg::PointField::UINT16, offset);
-  offset = addPointField(ros_msg, "timestamp", 1, sensor_msgs::msg::PointField::FLOAT64, offset);
+  offset = addPointField(ros_msg, "return_type", 1, sensor_msgs::msg::PointField::UINT8, offset);
+  offset = addPointField(ros_msg, "channel", 1, sensor_msgs::msg::PointField::UINT16, offset);
+  offset = addPointField(ros_msg, "azimuth", 1, sensor_msgs::msg::PointField::FLOAT32, offset);
+  offset = addPointField(ros_msg, "elevation", 1, sensor_msgs::msg::PointField::FLOAT32, offset);
+  offset = addPointField(ros_msg, "distance", 1, sensor_msgs::msg::PointField::FLOAT32, offset);
+  offset = addPointField(ros_msg, "time", 1, sensor_msgs::msg::PointField::UINT32, offset);
 #endif
 
 #if 0
@@ -254,10 +263,14 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
   sensor_msgs::PointCloud2Iterator<float> iter_x_(ros_msg, "x");
   sensor_msgs::PointCloud2Iterator<float> iter_y_(ros_msg, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z_(ros_msg, "z");
-  sensor_msgs::PointCloud2Iterator<float> iter_intensity_(ros_msg, "intensity");
+  sensor_msgs::PointCloud2Iterator<uint8_t> iter_intensity_(ros_msg, "intensity");
 #ifdef POINT_TYPE_XYZIRT
-  sensor_msgs::PointCloud2Iterator<uint16_t> iter_ring_(ros_msg, "ring");
-  sensor_msgs::PointCloud2Iterator<double> iter_timestamp_(ros_msg, "timestamp");
+  sensor_msgs::PointCloud2Iterator<uint8_t> iter_return_type_(ros_msg, "return_type");
+  sensor_msgs::PointCloud2Iterator<uint16_t> iter_channel_(ros_msg, "channel");
+  sensor_msgs::PointCloud2Iterator<float> iter_azimuth_(ros_msg, "azimuth");
+  sensor_msgs::PointCloud2Iterator<float> iter_elevation_(ros_msg, "elevation");
+  sensor_msgs::PointCloud2Iterator<float> iter_distance_(ros_msg, "distance");
+  sensor_msgs::PointCloud2Iterator<uint32_t> iter_time_(ros_msg, "time");
 #endif
 
   if (send_by_rows)
@@ -268,22 +281,39 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
       {
         const LidarPointCloudMsg::PointT& point = rs_msg.points[i + j * rs_msg.height];
 
+        // *iter_x_ = point.x;
+        // *iter_y_ = point.y;
+        // *iter_z_ = point.z;
+        // *iter_intensity_ = point.intensity;
+
+        // ++iter_x_;
+        // ++iter_y_;
+        // ++iter_z_;
+        // ++iter_intensity_;
+
+#ifdef POINT_TYPE_XYZIRT
         *iter_x_ = point.x;
         *iter_y_ = point.y;
         *iter_z_ = point.z;
-        *iter_intensity_ = point.intensity;
+        *iter_intensity_ = static_cast<uint8_t>(point.intensity); // Assuming intensity is float, cast to uint8_t
+        *iter_return_type_ = 1; 
+        *iter_channel_ = point.ring; // Use ring as channel
+        float distance = std::hypot(point.x, point.y, point.z);
+        *iter_azimuth_ = std::atan2(point.y, point.x);
+        *iter_elevation_ = std::atan2(point.z, distance);
+        *iter_distance_ = distance;
+        *iter_time_ = static_cast<uint32_t>((point.timestamp - floor(point.timestamp)) * 1e9); // Convert seconds to nanoseconds
 
         ++iter_x_;
         ++iter_y_;
         ++iter_z_;
         ++iter_intensity_;
-
-#ifdef POINT_TYPE_XYZIRT
-        *iter_ring_ = point.ring;
-        *iter_timestamp_ = point.timestamp;
-
-        ++iter_ring_;
-        ++iter_timestamp_;
+        ++iter_return_type_;
+        ++iter_channel_;
+        ++iter_azimuth_;
+        ++iter_elevation_;
+        ++iter_distance_;
+        ++iter_time_;
 #endif
       }
     }
@@ -294,22 +324,39 @@ inline sensor_msgs::msg::PointCloud2 toRosMsg(const LidarPointCloudMsg& rs_msg, 
     {
       const LidarPointCloudMsg::PointT& point = rs_msg.points[i];
 
+      // *iter_x_ = point.x;
+      // *iter_y_ = point.y;
+      // *iter_z_ = point.z;
+      // *iter_intensity_ = point.intensity;
+
+      // ++iter_x_;
+      // ++iter_y_;
+      // ++iter_z_;
+      // ++iter_intensity_;
+
+#ifdef POINT_TYPE_XYZIRT
       *iter_x_ = point.x;
       *iter_y_ = point.y;
       *iter_z_ = point.z;
-      *iter_intensity_ = point.intensity;
+      *iter_intensity_ = static_cast<uint8_t>(point.intensity); // Assuming intensity is float, cast to uint8_t
+      *iter_return_type_ = 1; 
+      *iter_channel_ = point.ring; // Use ring as channel
+      float distance = std::hypot(point.x, point.y, point.z);
+      *iter_azimuth_ = std::atan2(point.y, point.x);
+      *iter_elevation_ = std::atan2(point.z, distance);
+      *iter_distance_ = distance;
+      *iter_time_ = static_cast<uint32_t>((point.timestamp - floor(point.timestamp)) * 1e9); // Convert seconds to nanoseconds
 
       ++iter_x_;
       ++iter_y_;
       ++iter_z_;
       ++iter_intensity_;
-
-#ifdef POINT_TYPE_XYZIRT
-      *iter_ring_ = point.ring;
-      *iter_timestamp_ = point.timestamp;
-
-      ++iter_ring_;
-      ++iter_timestamp_;
+      ++iter_return_type_;
+      ++iter_channel_;
+      ++iter_azimuth_;
+      ++iter_elevation_;
+      ++iter_distance_;
+      ++iter_time_;
 #endif
     }
   }
