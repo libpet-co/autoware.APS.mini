@@ -164,22 +164,36 @@ class YESENSE_Publisher : public rclcpp::Node
 	private:
 	void timer_callback()
 	{
-		size_t bytes_read_r_buffer = 0;
+		std::vector<unsigned char> r_buffer_vec;  // 使用动态向量缓冲区
+		size_t bytes_available = 0;
+		size_t bytes_read = 0;
 
-		if(ser.available()) 
-		{
-			bytes_read_r_buffer = ser.read(r_buffer, ser.available());
-		}
-
-		int ret = decoder.data_proc(r_buffer, (unsigned int)bytes_read_r_buffer, &yis_out);
-		if(analysis_ok == ret)
-		{
-			if(yis_out.content.valid_flg)
-			{
-				yis_out.content.valid_flg = 0u;
-				user_info.msg_cnt++;						
-				publish_msg(&yis_out);
+		try {
+			bytes_available = ser.available();
+			if (bytes_available > 0) {
+				r_buffer_vec.resize(std::min(bytes_available, static_cast<size_t>(UART_RX_BUF_LEN)));  // 限制最大读取512
+				bytes_read = ser.read(r_buffer_vec.data(), r_buffer_vec.size());
 			}
+
+			if (bytes_read == 0) {
+				return;
+			}
+
+			int ret = decoder.data_proc(r_buffer_vec.data(), static_cast<unsigned int>(bytes_read), &yis_out);
+			if(analysis_ok == ret)
+			{
+				if(yis_out.content.valid_flg)
+				{
+					yis_out.content.valid_flg = 0u;
+					user_info.msg_cnt++;						
+					publish_msg(&yis_out);
+				}
+			} else {
+				RCLCPP_WARN(this->get_logger(), "Data decode failed: ret=%d", ret);
+			}
+		} catch (const std::exception& e) {
+			RCLCPP_FATAL(this->get_logger(), "Exception in timer_callback: %s", e.what());
+			rclcpp::shutdown();
 		}
 	}
 	
@@ -237,15 +251,36 @@ void YESENSE_Publisher::publish_msg(yis_out_data_t *result)
 		timestamp_gap = now_timestamp - sensor_timestamp;
 	}
 	double amend_timestamp = sensor_timestamp + timestamp_gap;
-	RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 1000,
-						"acc: %.3f,%.3f,%.3f gyro: %.3f,%.3f,%.3f",
-						result->acc.x, result->acc.y, result->acc.z,
-						result->gyro.x, result->gyro.y, result->gyro.z);
 
 	// imu ros data
+	constexpr double ACCEL_COVARIANCE = 1.454e-5;   // (m/s²)²
+	constexpr double GYRO_COVARIANCE = 3.731e-7;    // (rad/s)²
+	
     imu_ros_data.header.frame_id 	= frame_id;		// 如果不加frame_id，rziv会因为frame_id为空而过滤不显示
     imu_ros_data.header.stamp = rclcpp::Time(static_cast<int64_t>(amend_timestamp * 1000000000.0)); // this->get_clock()->now();
 
+	// 设置协方差矩阵（行优先顺序）
+	// 加速度计协方差（对角矩阵）
+	imu_ros_data.linear_acceleration_covariance = {
+		ACCEL_COVARIANCE, 0.0, 0.0,
+		0.0, ACCEL_COVARIANCE, 0.0,
+		0.0, 0.0, ACCEL_COVARIANCE
+	};
+
+	// 陀螺仪协方差（对角矩阵）
+	imu_ros_data.angular_velocity_covariance = {
+		GYRO_COVARIANCE, 0.0, 0.0,
+		0.0, GYRO_COVARIANCE, 0.0,
+		0.0, 0.0, GYRO_COVARIANCE
+	};
+
+	// 姿态协方差（未知设置为-1）
+	imu_ros_data.orientation_covariance = {
+		-1.0, 0.0, 0.0,
+		0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0
+	};
+	
     imu_ros_data.orientation.x = result->quat.q1;
 	imu_ros_data.orientation.y = result->quat.q2;
    	imu_ros_data.orientation.z = result->quat.q3;
