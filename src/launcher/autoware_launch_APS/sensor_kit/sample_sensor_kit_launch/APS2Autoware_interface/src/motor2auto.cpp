@@ -112,8 +112,8 @@ private:
         if( motor_enabled_ && !manual_mode_){
             twist.linear.x = msg->linear.x;
             twist.angular.z = msg->angular.z;
-            RCLCPP_INFO(this->get_logger(), "[Auto Mode: cmd_vel]linear speed: %f", twist.linear.x);
-            RCLCPP_INFO(this->get_logger(), "[Auto Mode: cmd_vel]angular speed: %f", twist.linear.z);
+            // RCLCPP_INFO(this->get_logger(), "[Auto Mode: cmd_vel]linear speed: %f", twist.linear.x);
+            // RCLCPP_INFO(this->get_logger(), "[Auto Mode: cmd_vel]angular speed: %f", twist.linear.z);
             setMotorSpeeds(twist);
         }
     }
@@ -181,11 +181,12 @@ private:
 
         // 运动学逆解
         double target_linear = cmd_vel.linear.x;
-        double target_angular = std::clamp(cmd_vel.angular.z, -max_angular_speed, max_angular_speed);
-        
-        if (target_angular != 0) {
-            target_linear = std::clamp(target_linear, -0.5, 0.85);
-        }
+        double target_angular = cmd_vel.angular.z;
+        // double target_angular = std::clamp(cmd_vel.angular.z, -max_angular_speed, max_angular_speed);
+
+        // if (target_angular != 0) {
+        //     target_linear = std::clamp(target_linear, -0.5, 0.85);
+        // }
         
         double left_rpm = (target_linear - (target_angular * wheel_distance) / 2.0) * 
                           motor_controller_->rpm_per_mps_;
@@ -236,7 +237,8 @@ private:
     void convert_velocity_to_autoware_msg(autoware_vehicle_msgs::msg::VelocityReport msg)
     {   
         msg.longitudinal_velocity = linear_velocity;
-        msg.lateral_velocity = angular_velocity;
+        msg.lateral_velocity = 0.0;
+        msg.heading_rate = angular_velocity;
         msg.header.frame_id = "base_link";//不明白为什么这里要设定为base_link
         velocity_pub_->publish(msg);
     }
@@ -286,7 +288,7 @@ private:
         }
         
         // 电机锁按钮 (点动)
-        if (joy_msg->buttons[motor_lock_button_] == 1 && !last_buttons_[motor_lock_button_]) {
+        if (joy_msg->buttons[motor_lock_button_] == 1 && !last_buttons_[motor_lock_button_] && manual_mode_) {
             motor_enabled_ = !motor_enabled_;
             if(motor_enabled_){motor_controller_->enableMotors();}
             else{motor_controller_->disableMotors();}

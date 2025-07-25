@@ -15,7 +15,7 @@
   <!-- <arg name="lanelet2_map_file" default="lanelet2_map.osm" description="lanelet2 map file name"/>
   <arg name="pointcloud_map_file" default="pointcloud_map.pcd" description="pointcloud map file name"/> -->
 
-  <arg name="lanelet2_map_file" default="new_lanelet2_maps.osm" description="lanelet2 map file name"/>
+  <arg name="lanelet2_map_file" default="loop.osm" description="lanelet2 map file name"/>
   <arg name="pointcloud_map_file" default="cloudGlobal_subsample.pcd" description="pointcloud map file name"/>
   
   <let name="rviz_initial_pose_auto_fix_target" value="vector_map"/>
@@ -56,7 +56,7 @@
     <let name="launch_vehicle_interface" value="false" if="$(var vehicle_simulation)"/>
     <let name="launch_vehicle_interface" value="true" unless="$(var vehicle_simulation)"/>
 
-    <include file="$(find-pkg-share autoware_launch)/launch/autoware.launch.xml">
+    <include file="$(find-pkg-share autoware_launch)/launch/autoware.launch.test.xml">
       <!-- Common -->
       <arg name="map_path" value="$(var map_path)"/>
       <arg name="vehicle_model" value="$(var vehicle_model)"/>

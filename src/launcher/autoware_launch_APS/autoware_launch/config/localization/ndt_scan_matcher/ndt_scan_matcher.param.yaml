@@ -23,7 +23,7 @@
     ndt:
       # The maximum difference between two consecutive
       # transformations in order to consider convergence
-      trans_epsilon: 0.01
+      trans_epsilon: 0.005
 
       # The newton line search maximum step length
       step_size: 0.1
@@ -32,7 +32,7 @@
       resolution: 2.0
 
       # The number of iterations required to calculate alignment
-      max_iterations: 30
+      max_iterations: 50
 
       # Number of threads used for parallel computing
       num_threads: 4

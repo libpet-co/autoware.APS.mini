@@ -189,7 +189,7 @@ class YESENSE_Publisher : public rclcpp::Node
 					publish_msg(&yis_out);
 				}
 			} else {
-				RCLCPP_WARN(this->get_logger(), "Data decode failed: ret=%d", ret);
+				// RCLCPP_WARN(this->get_logger(), "Data decode failed: ret=%d", ret);
 			}
 		} catch (const std::exception& e) {
 			RCLCPP_FATAL(this->get_logger(), "Exception in timer_callback: %s", e.what());

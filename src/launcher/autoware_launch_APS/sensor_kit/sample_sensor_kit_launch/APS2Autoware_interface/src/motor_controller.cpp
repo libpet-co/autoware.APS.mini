@@ -158,10 +158,10 @@ void MotorController::setMotorSpeeds(int left_speed, int right_speed)
 {
 
     // limit the range when speed up
-    if(-left_speed == right_speed){
-        left_speed = std::clamp(left_speed, -max_motor_speed_, 40);
-        right_speed = std::clamp(right_speed, -40, max_motor_speed_);
-    }
+    // if(-left_speed == right_speed){
+    //     left_speed = std::clamp(left_speed, -max_motor_speed_, 40);
+    //     right_speed = std::clamp(right_speed, -40, max_motor_speed_);
+    // }
     
 
     // RCLCPP_INFO(node_->get_logger(), "---------------------------------------------------");
